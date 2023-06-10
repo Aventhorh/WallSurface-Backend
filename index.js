@@ -10,76 +10,79 @@ import {
 import { handleValidationErrors, checkAuth } from "./utils/index.js";
 import { PostController, UserController } from "./controllers/index.js";
 
-mongoose
-  .connect(
+// .then(() => console.log("DataBase ! OK !"))
+// .catch((err) => console.log("DataBase ERROR!!!", err));
+
+export const createServer = () => {
+  mongoose.connect(
     "mongodb+srv://aventhor:a3521432@cluster0.jbqc44n.mongodb.net/blog?retryWrites=true&w=majority"
-  )
-  .then(() => console.log("DataBase ! OK !"))
-  .catch((err) => console.log("DataBase ERROR!!!", err));
+  );
 
-const app = express();
+  const storage = multer.diskStorage({
+    destination: (req, res, callback) => {
+      callback(null, "uploads");
+    },
+    filename: (req, file, callback) => {
+      callback(null, file.originalname);
+    },
+  });
 
-const storage = multer.diskStorage({
-  destination: (req, file, callback) => {
-    console.log("");
-    callback(null, "uploads");
-  },
-  filename: (req, file, callback) => {
-    callback(null, file.originalname);
-  },
-});
+  const app = express();
+  app.use(express.json());
+  app.use(cors());
+  app.use("/uploads", express.static("uploads"));
+  app.post(
+    "/auth/login",
+    loginValidation,
+    handleValidationErrors,
+    UserController.login
+  );
 
-app.use(express.json());
-app.use(cors());
-app.use("/uploads", express.static("uploads"));
+  app.post(
+    "/auth/register",
+    registerValidation,
+    handleValidationErrors,
+    UserController.register
+  );
 
-app.post(
-  "/auth/login",
-  loginValidation,
-  handleValidationErrors,
-  UserController.login
-);
-app.post(
-  "/auth/register",
-  registerValidation,
-  handleValidationErrors,
-  UserController.register
-);
-app.get("/auth/me", checkAuth, UserController.getMe);
-app.get("/auth/getAll", UserController.getAll);
+  app.get("/auth/me", checkAuth, UserController.getMe);
+  app.get("/auth/getAll", UserController.getAll);
 
-app.post(
-  "/upload",
-  checkAuth,
-  multer({ storage }).single("image"),
-  (req, res) => {
-    res.json({
-      url: `/uploads/${req.file.originalname}`,
-    });
-  }
-);
+  app.post(
+    "/upload",
+    checkAuth,
+    multer({ storage }).single("image"),
+    (req, res) => {
+      res.json({
+        url: `/uploads/${req.file.originalname}`,
+      });
+    }
+  );
+  app.post(
+    "/posts",
+    checkAuth,
+    postCreateValidation,
+    handleValidationErrors,
+    PostController.create
+  );
+  app.get("/posts", PostController.getAll);
+  app.get("/posts/:id", PostController.getOne);
+  app.get("/posts/tags", PostController.getLastTags);
+  app.get("/tags", PostController.getLastTags);
+  app.delete("/posts/:id", checkAuth, PostController.remove);
+  app.patch(
+    "/posts/:id",
+    checkAuth,
+    postCreateValidation,
+    handleValidationErrors,
+    PostController.update
+  );
+  return app;
+};
 
-app.get("/tags", PostController.getLastTags);
-app.get("/posts/tags", PostController.getLastTags);
-app.get("/posts", PostController.getAll);
-app.get("/posts/:id", PostController.getOne);
-app.post(
-  "/posts",
-  checkAuth,
-  postCreateValidation,
-  handleValidationErrors,
-  PostController.create
-);
-app.delete("/posts/:id", checkAuth, PostController.remove);
-app.patch(
-  "/posts/:id",
-  checkAuth,
-  postCreateValidation,
-  handleValidationErrors,
-  PostController.update
-);
-
-app.listen(4444, (err) => {
+const app = createServer();
+const randomFourNumbers = () => Math.floor(1000 + Math.random() * 9000);
+app.listen(randomFourNumbers(), (err) => {
   if (err) {
     return console.log("LocalServer ERROR!!!", err);
   }

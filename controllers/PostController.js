@@ -110,7 +110,7 @@ export const create = async (req, res) => {
     res.json(post);
   } catch (err) {
     console.log(err);
-    res.status(500).json({ message: "Не удалось создать статью" });
+    res.status(500).json({ message: err });
   }
 };
 
